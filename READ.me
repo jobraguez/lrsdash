@@ -1,0 +1,86 @@
+Animação 2D Learning Analytics Dashboard
+Este repositório contém duas ferramentas principais:
+1.export.py – coleta e normaliza statements xAPI do Watershed LRS para CSV
+2.dashboard_app.py – gera um dashboard interativo em Streamlit com gráficos e tabelas de learning analytics
+
+📦 Estrutura de arquivos
+lrs_export/
+├── A2D.12-Avaliação Diagnóstica-notas.csv # export bruto do Moodle
+├── A2D.12-Avaliação Final-notes.csv # export bruto do Moodle
+├── Avalia_o_Satisfa_o_do_curso.csv # export bruto do Moodle
+├── cmid_module_map.csv # mapeamento cmid → módulo
+├── config.toml # configurações (opcional)
+├── dashboard_app.py # Streamlit dashboard
+├── diagnostica_clean.csv # saída limpa de diagnóstica
+├── export.py # coleta statements xAPI ↔ Watershed
+├── final_clean.csv # saída limpa de avaliação final
+├── satisfacao_clean.csv # saída limpa de inquérito de satisfação
+├── statements_clean.csv # saída limpa de statements xAPI
+├── avas_export.py # script de limpeza dos CSVs de avaliação
+├── requirements.txt # dependências pip
+└── README.md
+
+🔧 Instalação
+Clone este repositório
+git clone https://github.com/seu-usuario/lrs_export.git
+cd lrs_export
+
+Crie e ative um virtualenv (recomendado)
+python3 -m venv .venv
+source .venv/bin/activate
+
+Instale as dependências
+pip install -r requirements.txt
+
+🛠️ Exportação de Statements (export.py)
+Use este script para buscar todos os statements xAPI do seu LRS Watershed e gerar o CSV statements_clean.csv.
+
+Configurações iniciais
+No topo do export.py, ajuste:
+ORG_ID   = "27295"                  # ID da sua organização no Watershed
+USER     = "seu_user_token_id"      # parte antes dos dois-pontos do seu par de credenciais
+PASS     = "seu_pass_token_secret"  # parte depois dos dois-pontos
+BASE_URL = f"https://watershedlrs.com/watershed/api/organizations/{ORG_ID}/lrs/statements"
+
+Se desejar filtrar por data, altere a chamada:
+stmts = fetch_all_statements(since="2025-06-11T12:00:00Z", limit=500)
+
+Gerar CSV
+python export.py
+
+Isso criará o statements_clean.csv contendo apenas as colunas relevantes:
+id, timestamp, user, cmid, module, verb, activity
+
+📊 Dashboard Streamlit (dashboard_app.py)
+Este app carrega o statements_clean.csv e os três CSVs de avaliações (diagnostica_clean.csv, final_clean.csv e satisfacao_clean.csv) para mostrar:
+-Visão Admin: visão geral, statements por módulo, verbos mais comuns, evolução diária
+-Learn Stats: tentativas vs respondidas, análises das avaliações diagnóstica e final, inquérito de satisfação, evolução diagnóstica→final, tempo de conclusão
+
+Executar localmente
+Certifique-se de ter gerado statements_clean.csv e criado os CSVs de avaliação (“clean”).
+streamlit run dashboard_app.py
+Abra no navegador em http://localhost:8501.
+
+☁️ Deploy no Streamlit Cloud
+Faça um fork ou adicione este repositório à sua conta do Streamlit
+Nas configurações do app, defina:
+    Script principal: dashboard_app.py
+    Secrets: (opcional) guarde lá as credenciais do LRS se quiser executar o export.py via Streamlit
+Clique em Deploy.
+
+O requirements.txt será usado para instalar todas as dependências.
+
+📑 requirements.txt
+streamlit>=1.20.0
+pandas
+matplotlib
+requests
+unidecode
+python-dateutil
+
+📝 Notas
+    sys, subprocess e outros que vêm com o Python não devem constar em requirements.txt.
+    Se precisar de autenticação via token no Moodle, o dashboard hoje funciona apenas com CSVs exportados manualmente; integração direta via API REST do Moodle não está implementada.
+
+⚖️ Licença
+Este projeto está licenciado sob jbraguez.
