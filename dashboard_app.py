@@ -496,7 +496,7 @@ else:
 
         # caminhos para os CSVs brutos
 
-        DIAG_RAW = "A2D.12-Avaliação Diagnóstica-notas.csv"
+        DIAG_RAW = "a2d12_avaliacao_diagnostica_notas.csv"
         FINAL_RAW = "A2D.12-Avaliação Final-notas.csv"
 
         # Extract averages
