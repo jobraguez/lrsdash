@@ -51,7 +51,7 @@ CSV_FILE = "statements_clean.csv"
 DIAG_CSV       = 'diagnostica_clean.csv'
 FINAL_CSV      = 'final_clean.csv'
 SATISF_CSV     = 'satisfacao_clean.csv'
-DIAG_RAW = "a2d12_avaliacao_diagnostica_notas"
+DIAG_RAW = "a2d12_avaliacao_diagnostica_notas.csv"
 FINAL_RAW = "A2D.12-Avaliação Final-notas.csv"
 # ────────────────────────────────────────────────────────────────┘
 
