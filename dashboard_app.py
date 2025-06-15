@@ -52,7 +52,7 @@ DIAG_CSV       = 'diagnostica_clean.csv'
 FINAL_CSV      = 'final_clean.csv'
 SATISF_CSV     = 'satisfacao_clean.csv'
 DIAG_RAW = "a2d12_avaliacao_diagnostica_notas.csv"
-FINAL_RAW = "A2D.12-Avaliação Final-notas.csv"
+FINAL_RAW = "a2d12_avaliação_final-notas.csv"
 # ────────────────────────────────────────────────────────────────┘
 
 # ─── 2. Carregamento e pré-processamento ───────────────────────┐
@@ -497,7 +497,7 @@ else:
         # caminhos para os CSVs brutos
 
         DIAG_RAW = "a2d12_avaliacao_diagnostica_notas.csv"
-        FINAL_RAW = "A2D.12-Avaliação Final-notas.csv"
+        FINAL_RAW = "a2d12_avaliação_final-notas.csv"
 
         # Extract averages
         diag_avgs = extract_avg_scores(DIAG_RAW)
