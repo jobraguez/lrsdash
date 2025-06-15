@@ -522,7 +522,7 @@ else:
 
     # 1) Lê o CSV bruto, autodetectando delimitador
     raw_final = pd.read_csv(
-        "A2D.12-Avaliação Final-notas.csv",
+        "a2d12_avaliação_final-notas.csv",
         sep=None,  # deixa o pandas adivinhar vírgula vs ponto‐e‐vírgula
         engine="python",
         dtype=str
