@@ -12,7 +12,6 @@ import re
 # define aqui as tuas credenciais (username: password)
 CREDENTIALS = {
     "admin": "admin123",
-    "learn": "learn123"
 }
 
 # 2) Inicialize o estado de sessão
