@@ -223,7 +223,30 @@ if view == "Visão Admin":
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Statements", len(df))
     c2.metric("Total Módulos", df["module"].nunique())
-    c3.metric("Total Utilizadores", df["user"].nunique())
+    
+    # Normaliza coluna "module" para remover acentos e garantir robustez
+    df["module_norm"] = (
+        df["module"]
+        .astype(str)
+        .fillna("")
+        .apply(unidecode.unidecode)
+        .str.lower()
+        .str.strip()
+    )
+    
+    df["verb_lc"] = df["verb"].str.lower()
+    
+    # Filtra: verb = "submitted" e módulo contém "satisfacao"
+    mask_satisf_submit = (
+        (df["verb_lc"] == "submitted") &
+        (df["module_norm"].str.contains("satisfacao", na=False))
+    )
+    
+    # Conta utilizadores únicos
+    n_users_satisf = df[mask_satisf_submit]["user"].nunique()
+    
+    # Atualiza métrica com esse valor
+    c3.metric("Total Utilizadores", n_users_satisf)
 
     # ─── 4. Statements por Módulo ─────────────────────────────────┐
     st.subheader("📦 Statements por Módulo")
