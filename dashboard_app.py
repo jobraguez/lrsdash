@@ -6,6 +6,7 @@ import subprocess, sys
 import unidecode
 from dateutil import parser
 import re
+import os
 from fpdf import FPDF
 import tempfile
 
