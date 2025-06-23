@@ -4,3 +4,4 @@ matplotlib
 requests
 unidecode
 python-dateutil
+fpdf
