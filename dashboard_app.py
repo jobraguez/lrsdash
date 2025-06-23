@@ -6,6 +6,8 @@ import subprocess, sys
 import unidecode
 from dateutil import parser
 import re
+from fpdf import FPDF
+import tempfile
 
 
 # ─── Autenticação ────────────────────────────────────────────────
@@ -675,3 +677,105 @@ else:
         total_var = df_items.sum(axis=1).var(ddof=1)
         cronbach_alpha = (n_items / (n_items - 1)) * (1 - item_vars.sum() / total_var)
         st.metric("🧪 α de Cronbach (Inquérito de Satisfação)", f"{cronbach_alpha:.2f}","Excelente!")
+
+    # 🖨️ Botão para gerar relatório
+    if st.button("📄 Gerar Relatório em PDF"):
+        with st.spinner("A gerar relatório..."):
+            # Criar imagens temporárias
+            tmp_dir = tempfile.mkdtemp()
+
+            # 1. Gráfico de Distrito
+            distrito_fig, ax = plt.subplots()
+            df_satis["Distrito"].value_counts().plot(kind="bar", ax=ax)
+            ax.set_title("Distribuição por Distrito")
+            distrito_path = os.path.join(tmp_dir, "distrito.png")
+            distrito_fig.savefig(distrito_path)
+            plt.close(distrito_fig)
+            # 1.b Nacionalidade
+            nacionalidade_fig, ax = plt.subplots()
+            df_satis["Nacionalidade"].value_counts().plot(kind="bar", ax=ax)
+            ax.set_title("Distribuição por Nacionalidade")
+            nacionalidade_path = os.path.join(tmp_dir, "nacionalidade.png")
+            nacionalidade_fig.savefig(nacionalidade_path)
+            plt.close(nacionalidade_fig)
+            # 1.c Escolaridade
+            escolaridade_fig, ax = plt.subplots()
+            df_satis["Escolaridade"].value_counts().plot(kind="bar", ax=ax)
+            ax.set_title("Distribuição por Escolaridade")
+            escolaridade_path = os.path.join(tmp_dir, "escolaridade.png")
+            escolaridade_fig.savefig(escolaridade_path)
+            plt.close(escolaridade_fig)
+
+            tempo_medio_texto = f"Tempo médio de conclusão do curso: {avg} minutos."
+            top_easy_txt = "\n".join([f"{row['Pergunta']}: {row['Tentativas']:.2f}" for _, row in df_easy.iterrows()])
+            top_hard_txt = "\n".join([f"{row['Pergunta']}: {row['Tentativas']:.2f}" for _, row in df_hard.iterrows()])
+
+            # 2. Gráfico de evolução
+            evol_fig, ax2 = plt.subplots()
+            df_evol[["Diagnóstica", "Final"]].plot(ax=ax2)
+            ax2.set_title("Evolução Diagnóstica vs Final")
+            evol_path = os.path.join(tmp_dir, "evolucao.png")
+            evol_fig.savefig(evol_path)
+            plt.close(evol_fig)
+
+            cronbach_txt = f"Alpha de Cronbach: {cronbach_alpha:.2f} (excelente consistência interna)."
+
+            # 3. Criar PDF
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(0, 10, "Relatório - Visão Learn Stats", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 10, "Este relatório apresenta a caracterização da amostra, "
+                                  "a evolução dos resultados da avaliação diagnóstica para a final "
+                                  "e gráficos com os principais indicadores.")
+
+            # Inserir gráficos
+            # Página 1 – Caracterização da amostra
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, "Caracterização da Amostra", ln=True)
+            pdf.image(distrito_path, w=100)
+            pdf.ln(5)
+            pdf.image(nacionalidade_path, w=100)
+            pdf.ln(5)
+            pdf.image(escolaridade_path, w=100)
+
+            # Página 2 – Tempo e Evolução
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, "Tempo e Evolução", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 10, tempo_medio_texto)
+            pdf.ln(5)
+            pdf.image(evol_path, w=180)
+
+            # Página 3 – Top-3 Perguntas e Cronbach
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, "Top-3 Perguntas e Confiabilidade", ln=True)
+
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Mais Fáceis", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 10, top_easy_txt)
+
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Mais Difíceis", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 10, top_hard_txt)
+
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Consistência Interna", ln=True)
+            pdf.set_font("Arial", "", 12)
+            pdf.multi_cell(0, 10, cronbach_txt)
+
+            # Guardar PDF
+            pdf_path = os.path.join(tmp_dir, "relatorio_visao_learn.pdf")
+            pdf.output(pdf_path)
+
+            # Mostrar botão de download
+            with open(pdf_path, "rb") as f:
+                st.download_button("⬇️ Baixar Relatório PDF", f, file_name="relatorio_learn.pdf")
