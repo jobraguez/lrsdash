@@ -351,45 +351,39 @@ if view == "Visão Admin":
             qs_counts = df_satis.groupby('Pergunta')['Resposta'].value_counts().unstack(fill_value=0)
             st.bar_chart(qs_counts)
 
-# ─── 6. Tentativas vs Respondidas por Pergunta (Global) ────────
+# ─── TENTATIVAS Por Pergunta ──────────────────────────────
     st.subheader("❓ Tentativas vs Respondidas por Pergunta")
     st.text("Do módulo 1 ao 4. A avaliação diagnóstica e final não está contabilizada aqui")
     # filtra statements com verbo contendo 'attempt' e 'answer'
     df_attempts = df[df['verb'].str.lower().str.contains('attempt', na=False)]
-    df_answered = df[df['verb'].str.lower().str.contains('answer', na=False)]
 
     # conta tentativas e respondidas por activity
     attempts = df_attempts['activity'].value_counts()
-    answered = df_answered['activity'].value_counts()
 
     # mantém só perguntas que começam por "Pergunta"
     mask = attempts.index.str.startswith("Pergunta")
     attempts = attempts[mask]
-    answered = answered.reindex(attempts.index, fill_value=0)
-
+    
     # prepara DataFrame final
     df_q = pd.DataFrame({
         'Pergunta': attempts.index,
         'Tentativas': attempts.values,
-        'Respondida': answered.values
-    })
 
+    })
     if df_q.empty:
         st.info("Não há tentativas registadas em perguntas.")
     else:
         # ordenação interativa
-        sort_col = st.selectbox("Ordenar por:", ['Pergunta', 'Tentativas', 'Respondida'], index=1)
+        sort_col = st.selectbox("Ordenar por:", ['Pergunta', 'Tentativas'], index=1)
         asc = st.checkbox("Ordem ascendente", value=False)
         df_q_sorted = df_q.sort_values(sort_col, ascending=asc)
-
         # exibe tabela completa
         #st.dataframe(df_q_sorted, use_container_width=True)
-
         # gráfico de barras agrupadas
         fig, ax = plt.subplots(figsize=(10, 5))
         x = range(len(df_q_sorted))
         ax.bar(x, df_q_sorted['Tentativas'], width=0.4, label='Tentativas')
-        ax.bar([i + 0.4 for i in x], df_q_sorted['Respondida'], width=0.4, label='Respondida')
+
         ax.set_xticks([i + 0.2 for i in x])
         ax.set_xticklabels(df_q_sorted['Pergunta'], rotation=45, ha='right')
         ax.set_xlabel("Pergunta")
