@@ -208,6 +208,13 @@ def load_satisfacao():
     #    ["Visão Admin", "Visão Learn Stats"]
     #)
 
+if st.session_state.user_role == "admin":
+    st.session_state.view = "admin"
+elif st.session_state.user_role == "learn":
+    st.session_state.view = "learn"
+else:
+    st.stop()  # segurança extra
+    
 # ─── VISÃO ADMINISTRATIVA ─────────────────────────────────────────────
 if st.session_state.view == "admin":
     st.title("🔧 Visão Admin")
