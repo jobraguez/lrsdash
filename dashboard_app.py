@@ -10,34 +10,37 @@ import os
 from fpdf import FPDF
 import tempfile
 
+# --- CONFIGURAÇÃO GERAL ---
+st.set_page_config(page_title="Dashboard Animação 2D", layout="wide")
 
-# ─── Autenticação ────────────────────────────────────────────────
-# define aqui as tuas credenciais (username: password)
+# --- AUTENTICAÇÃO SIMPLES ---
 CREDENTIALS = {
-    "admin": "admin123",
+    "admin": {"password": "admin123", "view": "admin"},
+    "learn": {"password": "learn123", "view": "learn"}
 }
 
-# 2) Inicialize o estado de sessão
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+    st.session_state.user_role = None
 
-# 3) Se não estiver autenticado, mostre o formulário de login e pare a execução
 if not st.session_state.logged_in:
-    st.title("🔒 Por favor faça login")
+    st.title("🔒 Login Necessário")
     user = st.text_input("👤 Utilizador")
-    pwd  = st.text_input("🔑 Password", type="password")
-    if st.button("Entrar"):
-        if CREDENTIALS.get(user) == pwd:
+    pwd = st.text_input("🔑 Password", type="password")
+    login_btn = st.button("Entrar")
+
+    if login_btn:
+        if user and user in CREDENTIALS and CREDENTIALS[user]["password"] == pwd:
             st.session_state.logged_in = True
-            #st.experimental_rerun()  # tento um rerun aqui, mas se der erro basta remover
+            st.session_state.user_role = CREDENTIALS[user]["view"]
+
         else:
-            st.error("Utilizador ou password incorretos")
+            st.error("Utilizador ou palavra-passe incorretos.")
+
     st.stop()
 
 
-
-# ────────────────────────────────────────────────────────────────┘
-# ─── 0. Configuração da página ─────────────────────────────────
+# --- CONSTANTES DE FICHEIROS ---
 st.set_page_config(
     page_title="Dashboard Animação 2D",
     layout="wide",
@@ -57,16 +60,19 @@ DIAG_RAW = "a2d12_avaliacao_diagnostica_notas.csv"
 FINAL_RAW = "a2d12_avaliação_final-notas.csv"
 # ────────────────────────────────────────────────────────────────┘
 
-# ─── 2. Carregamento e pré-processamento ───────────────────────┐
+# --- BOTÃO PARA ATUALIZAR ---
+from streamlit.runtime.scriptrunner import RerunException, RerunData
+if st.button("🔄 Atualizar dados"):
+    # chama o export.py com o mesmo interpretador Python
+    subprocess.run([sys.executable, "export.py"], check=True)
+    # força o Streamlit a reiniciar o script
+    raise RerunException(RerunData())
+    
+# ──────────────────────────┐
 @st.cache_data
+# --- FUNÇÃO: EXTRAIR MÉDIAS DE PERGUNTAS DO CSV BRUTO ---
 def extract_avg_scores(path):
-    """
-    Lê o CSV bruto da avaliação (diagnóstica ou final),
-    encontra a linha 'Média' e extrai os valores médios
-    apenas das colunas de perguntas P.1, P.2, ..., convertendo-as
-    para float.
-    Retorna uma Series indexed by 'P. 1', 'P. 2', ...
-    """
+    
     # 1) Leitura com vírgula como separador
     df_raw = pd.read_csv(path, sep=',', encoding='utf8', dtype=str)
 
@@ -79,7 +85,7 @@ def extract_avg_scores(path):
     avg_row = df_raw[mask].iloc[0]
 
     # 3) Seleciona apenas colunas de pergunta, por exemplo 'P. 1 /0,77'
-    #    vamos usar regex para pegar colunas que começam por 'P.'
+    #    usar regex para pegar colunas que começam por 'P.'
     q_cols = [c for c in df_raw.columns if re.match(r"^\s*P\.\s*\d+", c)]
     if not q_cols:
         raise ValueError(f"No question columns found in {path}")
@@ -123,7 +129,7 @@ try:
 except Exception as e:
     st.warning(f"Não foi possível extrair as médias dos CSVs brutos: {e}")
 
-
+# --- FUNÇÃO: CARREGAMENTO DE DADOS ---
 def load_data():
     df = pd.read_csv(CSV_FILE)
     df.columns = df.columns.map(str)
@@ -142,6 +148,7 @@ def load_data():
     df_satis = pd.read_csv(SATISF_CSV)
     return df, df_diag, df_final, df_satis
 
+# --- INICIALIZA OS DADOS ---
 df, df_diag, df_final, df_satis = load_data()
 # Lista de módulos realmente existentes (ordenada)
 modules_list = sorted(df["module"].dropna().unique())
@@ -206,27 +213,25 @@ def load_satisfacao():
     )
     return df_demo
 
+ # --- Selector de visão ---
+    #    view = st.sidebar.radio(
+    #    "🗂️ Seleciona a Visão",
+    #    ["Visão Admin", "Visão Learn Stats"]
+    #)
 
-
-# ————————————————————————————————————————————————
-# ─── 2. Selector de visão ───────────────────────────────────────
-view = st.sidebar.radio(
-    "🗂️ Seleciona a Visão",
-    ["Visão Admin", "Visão Learn Stats"]
-)
-
-# ─── 3. Visão Admin ─────────────────────────────────────────────
-if view == "Visão Admin":
+# ─── VISÃO ADMINISTRATIVA ─────────────────────────────────────────────
+if st.session_state.view == "admin":
     st.title("🔧 Visão Admin")
     st.text("Dashboard de administração do curso Animação 2D")
     st.text("Este painel tem dados completos, para uma visão de síntese e já com algumas conclusões, por favor aceda à Visão Learn Stats")
-    # --- Visão Geral ---
+
+    # ─── MÉTRICAS GERAIS ─────────────────────────────────────────
     st.header("Visão Geral")
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Statements", len(df))
     c2.metric("Total Módulos", df["module"].nunique())
-    
-    # Normaliza coluna "module" para remover acentos e garantir robustez
+
+    # Normaliza coluna module para filtragem
     df["module_norm"] = (
         df["module"]
         .astype(str)
@@ -235,22 +240,21 @@ if view == "Visão Admin":
         .str.lower()
         .str.strip()
     )
-    
     df["verb_lc"] = df["verb"].str.lower()
     
-    # Filtra: verb = "submitted" e módulo contém "satisfacao"
+    # Filtra utilizadores que submeteram o questionário de satisfação
     mask_satisf_submit = (
-        (df["verb_lc"] == "submitted") &
-        (df["module_norm"].str.contains("satisfacao", na=False))
+            (df["verb_lc"] == "submitted") &
+            (df["module_norm"].str.contains("satisfacao", na=False))
     )
-    
+
     # Conta utilizadores únicos
     n_users_satisf = df[mask_satisf_submit]["user"].nunique()
-    
+
     # Atualiza métrica com esse valor
     c3.metric("Total Utilizadores", n_users_satisf)
 
-    # ─── 4. Statements por Módulo ─────────────────────────────────┐
+     # ─── STATEMENTS POR MÓDULO ──────────────────────────────────
     st.subheader("📦 Statements por Módulo")
 
     # Garante zero para módulos sem statements hoje
@@ -273,14 +277,10 @@ if view == "Visão Admin":
     plt.xticks(rotation=45, ha='right')
     st.pyplot(fig)
     plt.tight_layout()
-
-
-    # ────────────────────────────────────────────────────────────────┘
-
-
-    # ─── 5. Verbos mais comuns ─────────────────────────────────────┐
+   
+    # ─── VERBOS POR MÓDULO ──────────────────────────────────────
     st.subheader("🔤 Verbos mais comuns")
-
+    # 1) Pivot table: linhas = módulo, colunas = verbo, valores = contagem
     verb_counts = df["verb"].value_counts()
     st.dataframe(
         verb_counts
@@ -327,11 +327,55 @@ if view == "Visão Admin":
     # Garante que estamos usando DatetimeIndex
     df_daily = df.set_index("timestamp").resample("D").size()
     st.line_chart(df_daily)
-    # ────────────────────────────────────────────────────────────────┘
+    
+    
+    # ─── TENTATIVAS Por Pergunta ──────────────────────────────
+    st.subheader("❓ Tentativas por Pergunta")
+    st.text("Perguntas do módulo 1 ao 4 (perguntas dos conteúdos H5P). ")
+    # filtra statements com verbo contendo 'attempt' e 'answer'
+    df_attempts = df[df['verb'].str.lower().str.contains('attempt', na=False)]
+
+    # conta tentativas e respondidas por activity
+    attempts = df_attempts['activity'].value_counts()
+
+    # mantém só perguntas que começam por "Pergunta"
+    mask = attempts.index.str.startswith("Pergunta")
+    attempts = attempts[mask]
+
+    # prepara DataFrame final
+    df_q = pd.DataFrame({
+        'Pergunta': attempts.index,
+        'Tentativas': attempts.values,
+
+    })
+    if df_q.empty:
+        st.info("Não há tentativas registadas em perguntas.")
+    else:
+        # ordenação interativa
+        sort_col = st.selectbox("Ordenar por:", ['Pergunta', 'Tentativas'], index=1)
+        asc = st.checkbox("Ordem ascendente", value=False)
+        df_q_sorted = df_q.sort_values(sort_col, ascending=asc)
+        # exibe tabela completa
+        # st.dataframe(df_q_sorted, use_container_width=True)
+        # gráfico de barras agrupadas
+        fig, ax = plt.subplots(figsize=(10, 5))
+        x = range(len(df_q_sorted))
+        ax.bar(x, df_q_sorted['Tentativas'], width=0.4, label='Tentativas')
+
+        ax.set_xticks([i + 0.2 for i in x])
+        ax.set_xticklabels(df_q_sorted['Pergunta'], rotation=45, ha='right')
+        ax.set_xlabel("Pergunta")
+        ax.set_ylabel("Contagem")
+        ax.legend()
+        plt.tight_layout()
+        st.pyplot(fig)
+    
     # ─── Avaliações & Satisfação ──────────────────────────
-    st.header("📊 Avaliações e Satisfação")
-    st.text("Todas respostas")
-    tabs = st.tabs(["Diagnóstica", "Avaliação Final", "Satisfação"])
+    st.header("📊 Avaliação diagnóstica, Avaliação final e Inquérito de Satisfação")
+    #st.text("Todas respostas")
+    tabs = st.tabs(["Ava. Diagnóstica", "Ava. Final", "Inq. Satisfação"])
+    df_diag.columns = [col.replace("id", "Tempo") if col.lower() == "id" else col for col in df_diag.columns]
+
     with tabs[0]:
         st.subheader("📝 Avaliação Diagnóstica")
         st.dataframe(df_diag, use_container_width=True)
@@ -354,56 +398,17 @@ if view == "Visão Admin":
             qs_counts = df_satis.groupby('Pergunta')['Resposta'].value_counts().unstack(fill_value=0)
             st.bar_chart(qs_counts)
 
-# ─── TENTATIVAS Por Pergunta ──────────────────────────────
-    st.subheader("❓ Tentativas vs Respondidas por Pergunta")
-    st.text("Do módulo 1 ao 4. A avaliação diagnóstica e final não está contabilizada aqui")
-    # filtra statements com verbo contendo 'attempt' e 'answer'
-    df_attempts = df[df['verb'].str.lower().str.contains('attempt', na=False)]
 
-    # conta tentativas e respondidas por activity
-    attempts = df_attempts['activity'].value_counts()
-
-    # mantém só perguntas que começam por "Pergunta"
-    mask = attempts.index.str.startswith("Pergunta")
-    attempts = attempts[mask]
-    
-    # prepara DataFrame final
-    df_q = pd.DataFrame({
-        'Pergunta': attempts.index,
-        'Tentativas': attempts.values,
-
-    })
-    if df_q.empty:
-        st.info("Não há tentativas registadas em perguntas.")
-    else:
-        # ordenação interativa
-        sort_col = st.selectbox("Ordenar por:", ['Pergunta', 'Tentativas'], index=1)
-        asc = st.checkbox("Ordem ascendente", value=False)
-        df_q_sorted = df_q.sort_values(sort_col, ascending=asc)
-        # exibe tabela completa
-        #st.dataframe(df_q_sorted, use_container_width=True)
-        # gráfico de barras agrupadas
-        fig, ax = plt.subplots(figsize=(10, 5))
-        x = range(len(df_q_sorted))
-        ax.bar(x, df_q_sorted['Tentativas'], width=0.4, label='Tentativas')
-
-        ax.set_xticks([i + 0.2 for i in x])
-        ax.set_xticklabels(df_q_sorted['Pergunta'], rotation=45, ha='right')
-        ax.set_xlabel("Pergunta")
-        ax.set_ylabel("Contagem")
-        ax.legend()
-        plt.tight_layout()
-        st.pyplot(fig)
 # ────────────────────────────────────────────────────────────────┘
-# ─── 4. Visão Learn Stats ────────────────────────────────────────
+# ───  Visão Learn Stats ────────────────────────────────────────
 else:
     st.title("📊 Visão Learn Stats")
     st.text("Dashboard de estatísticas do curso Animação 2D")
     st.text("Esta visão tem dados já filtrados e com algumas conclusões. Esta visão é aconselhada a professores.")
-    # 8.1. Carrega dados limpos
+    #  Carrega dados limpos
     df_sat = pd.read_csv("satisfacao_clean.csv", encoding="utf8")
 
-    # 8.2. Caracterização da Amostra
+    #  Caracterização da Amostra
     # ————————————————————————————————————————————————
     st.header("📝Caracterização da Amostra")
 
@@ -425,8 +430,8 @@ else:
         st.bar_chart(df_satis["Escolaridade"].value_counts())
 
         # ─── Tempo Diagnóstica → Satisfação por Utilizador ────────────────
-    st.subheader("⏱️ Tempo")
-    st.text("Tempo médio que os utilizadores levaram a concluir o curso. Foi contabilizado todo o tempo desde que iniciou até que finalizou. Assim mesmo que o utilizador fizesse log-off entre sessões, esse tempo foi contabilizado")
+    #st.subheader("⏱️ Tempo")
+    #st.text("Tempo médio que os utilizadores levaram a concluir o curso. Foi contabilizado todo o tempo desde que iniciou até que finalizou. Assim mesmo que o utilizador fizesse log-off entre sessões, esse tempo foi contabilizado")
     # 1) Normaliza módulo
     df["module_norm"] = (
         df["module"]
@@ -461,13 +466,13 @@ else:
         avg = round(durations.mean(), 1)
 
         # 7) mostra resultados
-        st.metric("⏲️ Tempo Médio (min)", f"{avg}")
+        #st.metric("⏲️ Tempo Médio (min)", f"{avg}")
         dur_df = durations.reset_index()
         dur_df.columns = ["Utilizador", "Minutos"]
         # st.dataframe(dur_df, use_container_width=True)
         # st.bar_chart(dur_df.set_index("Utilizador")["Minutos"])
 
-        # ─── 6. EVOLUÇÃO) ────────
+       # --- Evolução por Utilizador (Nota Global) ---
         def extract_overall_avg(path):
             # tenta ; e , como separadores
             for sep in (";", ","):
@@ -507,11 +512,9 @@ else:
         except Exception as e:
             st.warning(f"Não foi possível extrair as médias dos CSVs brutos: {e}")
 
-        # ————————————————————————————————————————————————
-        # 8. Evolução: Média Diagnóstica → Final
-        # ————————————————————————————————————————————————
+    # --- Evolução por Pergunta (Diagnóstica vs Final) ---
         st.subheader("📈 Evolução por Pergunta")
-        st.text("A diferença entre a média das notas da avaliação diagnóstica e final por pergunta.")
+        st.text("A diferença entre a média das notas da avaliação diagnóstica e da avaliação final por pergunta.")
 
         # caminhos para os CSVs brutos
 
@@ -537,7 +540,7 @@ else:
         st.line_chart(df_evol[["Diagnóstica", "Final"]])
 
     # ─── Top-3 Perguntas Mais Fáceis e Difíceis (Avaliação Final) ───
-    st.subheader("🏅 Top-3 Perguntas Mais Fáceis e Difíceis (Avaliação Final)")
+    st.subheader("🏅 Top-3 Perguntas com melhores e piores classificações (Avaliação Final)")
 
     # 1) Lê o CSV bruto, autodetectando delimitador
     raw_final = pd.read_csv(
