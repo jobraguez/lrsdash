@@ -535,71 +535,10 @@ else:
         # st.dataframe(df_evol, use_container_width=True)
         st.line_chart(df_evol[["Diagnóstica", "Final"]])
 
-    # ─── Top-3 Perguntas Mais Fáceis e Difíceis (Avaliação Final) ───
-    st.subheader("🏅 Top-3 Perguntas com melhores e piores classificações (Avaliação Final)")
+    # --- Resultados por Pergunta
+        # st.subheader("❓ Tentativas vs Respondidas por Pergunta (Global)")
 
-    # 1) Lê o CSV bruto, autodetectando delimitador
-    raw_final = pd.read_csv(
-        "a2d12_avaliação_final-notas.csv",
-        sep=None,  # deixa o pandas adivinhar vírgula vs ponto‐e‐vírgula
-        engine="python",
-        dtype=str
-    )
-
-    # 2) Descobre qual é a primeira coluna (normalmente "Apelido" ou similar)
-    id_col = raw_final.columns[0]
-
-    # 3) Procura a linha “Média” nessa coluna
-    mask_avg = (
-        raw_final[id_col]
-        .astype(str)
-        .str.strip()
-        .str.lower()
-        .eq("média")
-    )
-    if not mask_avg.any():
-        st.error(f"Linha 'Média' não encontrada na coluna {id_col!r}.")
-    else:
-        avg_row = raw_final.loc[mask_avg].iloc[0]
-
-        # 4) Seleciona apenas as colunas de perguntas, ex: "P. 1 /0,77"
-        q_cols = [c for c in raw_final.columns if re.match(r"^P\.\s*\d+", c)]
-        if not q_cols:
-            st.warning("Nenhuma coluna de pergunta (P. X) encontrada.")
-        else:
-            # 5) Extrai as médias e converte "8,61" → 8.61
-            scores = (
-                avg_row[q_cols]
-                .str.replace(",", ".", regex=False)
-                .astype(float)
-            )
-
-            # 6) Computa top‐3 fáceis (maiores médias) e top‐3 difíceis (menores)
-            df_easy = (
-                scores.nlargest(3)
-                .reset_index()
-                .rename(columns={"index": "Pergunta", 0: "Média"})
-            )
-            df_hard = (
-                scores.nsmallest(3)
-                .reset_index()
-                .rename(columns={"index": "Pergunta", 0: "Média"})
-            )
-
-            # 7) Exibe lado a lado
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("#### 🟢 3 Mais Fáceis")
-                st.dataframe(df_easy)
-            with c2:
-                st.markdown("#### 🔴 3 Mais Difíceis")
-                st.dataframe(df_hard)
-
-    # ───────────────────────────────────────────────────────
-    # ─── 6. Tentativas vs Respondidas por Pergunta (Global) ────────
-    #st.subheader("❓ Tentativas vs Respondidas por Pergunta (Global)")
-
-    # filtra statements com verbo contendo 'attempt' e 'answer'
+        # filtra statements com verbo contendo 'attempt' e 'answer'
     df_attempts = df[df['verb'].str.lower().str.contains('attempt', na=False)]
     df_answered = df[df['verb'].str.lower().str.contains('answer', na=False)]
 
@@ -619,28 +558,79 @@ else:
         'Respondida': answered.values
     })
 
-# ─── Perguntas mais fáceis e mais difíceis ─────────
-
-    st.subheader("🏅 Top-3 Perguntas Mais Fáceis e Difíceis (Módulo 1 a 4)")
+    # --- Top-3 Global (Módulos 1 a 4) ---
+    st.subheader("🏅 Top-3 Perguntas com melhores e piores classificações (Módulos)")
     col_easy, col_hard = st.columns(2)
 
     # 3 mais fáceis: só Pergunta e Tentativas
     df_easy = df_q.nsmallest(3, 'Tentativas')[['Pergunta', 'Tentativas']].reset_index(drop=True)
     with col_easy:
-        st.subheader("🟢 Mais Fáceis")
+        st.subheader("🟢 Melhores Classificações")
         st.dataframe(df_easy)
 
     # 3 mais difíceis: só Pergunta e Tentativas
     df_hard = df_q.nlargest(3, 'Tentativas')[['Pergunta', 'Tentativas']].reset_index(drop=True)
     with col_hard:
-        st.subheader("🔴 Mais Difíceis")
+        st.subheader("🔴 Piores Classificações")
         st.dataframe(df_hard)
 
-    # ————————————————————————————————————————————————
-    # 8. Inquérito de Satisfação
-    # ————————————————————————————————————————————————
+    # --- Top-3 Fáceis e Difíceis (Avaliação Final) ---
+    st.subheader("🏅 Top-3 Perguntas com melhores e piores classificações (Avaliação Final)")
+    # 1) Lê o CSV bruto, autodetectando delimitador
+    raw_final = pd.read_csv(
+        "a2d12_avaliação_final-notas.csv",
+        sep=None,  # deixa o pandas adivinhar vírgula vs ponto‐e‐vírgula
+        engine="python",
+        dtype=str
+    )
+    # 2) Descobre qual é a primeira coluna (normalmente "Apelido" ou similar)
+    id_col = raw_final.columns[0]
+    # 3) Procura a linha “Média” nessa coluna
+    mask_avg = (
+        raw_final[id_col]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .eq("média")
+    )
+    if not mask_avg.any():
+        st.error(f"Linha 'Média' não encontrada na coluna {id_col!r}.")
+    else:
+        avg_row = raw_final.loc[mask_avg].iloc[0]
+        # 4) Seleciona apenas as colunas de perguntas, ex: "P. 1 /0,77"
+        q_cols = [c for c in raw_final.columns if re.match(r"^P\.\s*\d+", c)]
+        if not q_cols:
+            st.warning("Nenhuma coluna de pergunta (P. X) encontrada.")
+        else:
+            # 5) Extrai as médias e converte "8,61" → 8.61
+            scores = (
+                avg_row[q_cols]
+                .str.replace(",", ".", regex=False)
+                .astype(float)
+            )
+            # 6) Computa top‐3 fáceis (maiores médias) e top‐3 difíceis (menores)
+            df_easy = (
+                scores.nlargest(3)
+                .reset_index()
+                .rename(columns={"index": "Pergunta", 18: "Média"})
+            )
+            df_hard = (
+                scores.nsmallest(3)
+                .reset_index()
+                .rename(columns={"index": "Pergunta", 18: "Média"})
+            )
+            # 7) Exibe lado a lado
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("#### 🟢 3 Melhores Classificações")
+                st.dataframe(df_easy)
+            with c2:
+                st.markdown("#### 🔴 3 Piores Classificações")
+                st.dataframe(df_hard)
 
-    # 8.3. Resultados por Pergunta
+
+   # --- Resultados por Pergunta -Satisfação-  + α Cronbach ---
+    #  Resultados por Pergunta
     st.subheader("📊 Satisfação: Resultados por Pergunta")
 
     # Seleciona apenas colunas cujo nome comece por 'Q' seguido de dígitos
@@ -706,9 +696,9 @@ else:
             escolaridade_fig.savefig(escolaridade_path)
             plt.close(escolaridade_fig)
 
-            tempo_medio_texto = f"Tempo médio de conclusão do curso: {avg} minutos."
-            top_easy_txt = "\n".join([f"{row['Pergunta']}: {row['Tentativas']:.2f}" for _, row in df_easy.iterrows()])
-            top_hard_txt = "\n".join([f"{row['Pergunta']}: {row['Tentativas']:.2f}" for _, row in df_hard.iterrows()])
+            #tempo_medio_texto = f"Tempo médio de conclusão do curso: {avg} minutos."
+            top_easy_txt = "\n".join([f"{row['Pergunta']}: {row['Média']:.2f}" for _, row in df_easy.iterrows()])
+            top_hard_txt = "\n".join([f"{row['Pergunta']}: {row['Média']:.2f}" for _, row in df_hard.iterrows()])
 
             # 2. Gráfico de evolução
             evol_fig, ax2 = plt.subplots()
@@ -746,23 +736,23 @@ else:
             pdf.set_font("Arial", "B", 14)
             pdf.cell(0, 10, "Tempo e Evolução", ln=True)
             pdf.set_font("Arial", "", 12)
-            pdf.multi_cell(0, 10, tempo_medio_texto)
+            #pdf.multi_cell(0, 10, tempo_medio_texto)
             pdf.ln(5)
             pdf.image(evol_path, w=180)
 
             # Página 3 – Top-3 Perguntas e Cronbach
             pdf.add_page()
             pdf.set_font("Arial", "B", 14)
-            pdf.cell(0, 10, "Top-3 Perguntas e Confiabilidade", ln=True)
+            pdf.cell(0, 10, "Top-3 Perguntas", ln=True)
 
             pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 10, "Mais Fáceis", ln=True)
+            pdf.cell(0, 10, "Melhor Classificação", ln=True)
             pdf.set_font("Arial", "", 12)
             pdf.multi_cell(0, 10, top_easy_txt)
 
             pdf.ln(5)
             pdf.set_font("Arial", "B", 12)
-            pdf.cell(0, 10, "Mais Difíceis", ln=True)
+            pdf.cell(0, 10, "Pior Classificação", ln=True)
             pdf.set_font("Arial", "", 12)
             pdf.multi_cell(0, 10, top_hard_txt)
 
