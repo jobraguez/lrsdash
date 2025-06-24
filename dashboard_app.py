@@ -39,18 +39,7 @@ if not st.session_state.logged_in:
 
     st.stop()
 
-
-# --- CONSTANTES DE FICHEIROS ---
-st.set_page_config(
-    page_title="Dashboard Animação 2D",
-    layout="wide",
-)
-from streamlit.runtime.scriptrunner import RerunException, RerunData
-if st.button("🔄 Atualizar dados"):
-    # chama o export.py com o mesmo interpretador Python
-    subprocess.run([sys.executable, "export.py"], check=True)
-    # força o Streamlit a reiniciar o script
-    raise RerunException(RerunData())
+    
 # ─── 1. Constantes ─────────────────────────────────────────────┐
 CSV_FILE = "statements_clean.csv"
 DIAG_CSV       = 'diagnostica_clean.csv'
